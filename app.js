@@ -1,0 +1,40 @@
+const tools = [
+  { id: 'landrop', title: 'LAN Drop', description: 'WindowsとiPhoneで、同じWi-Fi内のファイルを送受信します。', category: 'daily', label: '日常', icon: '⇩' },
+  { id: 'split', title: '割り勘計算', description: '会計を人数で割り、ひとり分の金額を計算します。', category: 'daily', label: '日常', icon: '¥' },
+  { id: 'date', title: '日数計算', description: '旅行や予定まで、2つの日付の間の日数を数えます。', category: 'daily', label: '日常', icon: '▦' },
+  { id: 'lottery', title: '順番決め・くじ引き', description: '候補からランダムに1人を選びます。', category: 'daily', label: '日常', icon: '◎' },
+  { id: 'text', title: '文字数カウント', description: '文字数、空白を除いた文字数、行数を数えます。', category: 'work', label: '仕事・学習', icon: 'あ' },
+  { id: 'image', title: '画像をまとめて小さく', description: '複数写真の横幅をまとめて縮小し、保存します。', category: 'photo', label: '写真', icon: '▧' },
+  { id: 'teams', title: 'ランダムチーム分け', description: '名前を入れるだけで、人数が偏らないチームを作ります。', category: 'daily', label: '日常', icon: '⊞' }
+];
+const grid = document.querySelector('#tool-grid');
+const search = document.querySelector('#tool-search');
+const dialog = document.querySelector('#tool-dialog');
+let selectedCategory = 'all';
+function renderTools() {
+  const query = search.value.trim().toLowerCase();
+  const items = tools.filter(tool => (selectedCategory === 'all' || tool.category === selectedCategory) && `${tool.title} ${tool.description} ${tool.label}`.toLowerCase().includes(query));
+  grid.innerHTML = items.map(tool => `<button class="tool-card" data-tool="${tool.id}"><span class="tool-icon">${tool.icon}</span><h3>${tool.title}</h3><p>${tool.description}</p><span class="tag"># ${tool.label}</span></button>`).join('');
+  document.querySelector('#empty-message').hidden = items.length > 0;
+}
+function setTool(id) {
+  const tool = tools.find(item => item.id === id);
+  document.querySelector('#dialog-title').textContent = tool.title;
+  document.querySelector('#dialog-category').textContent = `TOOLS / ${tool.label}`;
+  const content = document.querySelector('#tool-content'); content.innerHTML = '';
+  if (id === 'landrop') {
+    content.innerHTML = '<p>LAN Dropは、Windowsで起動して同じWi-FiのiPhoneとファイルを共有するアプリです。</p><ol class="steps"><li>Windowsで <code>lan-drop/start-lan-drop.bat</code> を開きます。</li><li>自動で開いたページ、または表示されたアドレスをiPhoneのSafariで開きます。</li><li>ファイルを選んで送受信します。</li></ol><p class="result-message">公開サイトではなく、PC上で使う機能です。</p>';
+  } else { content.append(document.querySelector(`#${id}-tool`).content.cloneNode(true)); bindTool(id); }
+  dialog.showModal();
+}
+function bindTool(id) { if (id === 'text') bindText(); if (id === 'image') bindImage(); if (id === 'split') bindSplit(); if (id === 'date') bindDate(); if (id === 'lottery') bindLottery(); if (id === 'teams') bindTeams(); }
+function bindText() { const input = document.querySelector('#text-input'); input.addEventListener('input', () => { const text = input.value; document.querySelector('#char-count').textContent = text.length; document.querySelector('#char-no-space').textContent = text.replace(/\s/g, '').length; document.querySelector('#line-count').textContent = text ? text.split(/\r\n|\r|\n/).length : 0; }); }
+function bindSplit() { const total = document.querySelector('#split-total'); const people = document.querySelector('#split-people'); const result = document.querySelector('#split-result'); document.querySelector('#calculate-split').onclick = () => { const amount = Number(total.value), count = Number(people.value); if (!amount || !count) { result.textContent = '金額と人数を入力してください。'; return; } const each = Math.ceil(amount / count); result.innerHTML = `<strong>ひとり ${each.toLocaleString()}円</strong><span>合計 ${amount.toLocaleString()}円 ／ ${count}人（端数を切り上げ）</span>`; }; }
+function bindDate() { const start = document.querySelector('#date-start'); const end = document.querySelector('#date-end'); const result = document.querySelector('#date-result'); document.querySelector('#calculate-date').onclick = () => { if (!start.value || !end.value) { result.textContent = '2つの日付を選んでください。'; return; } const days = Math.round((new Date(`${end.value}T00:00:00`) - new Date(`${start.value}T00:00:00`)) / 86400000); result.innerHTML = days < 0 ? '終了日を開始日より後にしてください。' : `<strong>${days}日間</strong><span>開始日を0日目として計算しています。</span>`; }; }
+function bindLottery() { const input = document.querySelector('#lottery-input'); const result = document.querySelector('#lottery-result'); document.querySelector('#draw-lottery').onclick = () => { const candidates = input.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean); if (!candidates.length) { result.textContent = '候補を1行ずつ入力してください。'; return; } const winner = candidates[crypto.getRandomValues(new Uint32Array(1))[0] % candidates.length]; result.innerHTML = `<strong>${escapeHtml(winner)}</strong><span>${candidates.length}件の候補から選びました。</span>`; }; }
+function bindTeams() { const input = document.querySelector('#teams-input'); const count = document.querySelector('#teams-count'); const result = document.querySelector('#teams-result'); document.querySelector('#make-teams').onclick = () => { const names = input.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean); const teamCount = Number(count.value); if (names.length < 2 || teamCount < 2) { result.textContent = '2人以上の名前と、チーム数を入力してください。'; return; } for (let index = names.length - 1; index > 0; index--) { const random = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1); [names[index], names[random]] = [names[random], names[index]]; } const teams = Array.from({ length: Math.min(teamCount, names.length) }, () => []); names.forEach((name, index) => teams[index % teams.length].push(name)); result.innerHTML = teams.map((team, index) => `<div><strong>チーム ${index + 1}</strong><span>${team.map(escapeHtml).join(' ・ ')}</span></div>`).join(''); }; }
+function escapeHtml(value) { const element = document.createElement('span'); element.textContent = value; return element.innerHTML; }
+function bindImage() { const input = document.querySelector('#image-input'); const width = document.querySelector('#image-width'); const message = document.querySelector('#image-message'); input.onchange = () => { const file = input.files[0]; if (!file) return; const image = new Image(); image.onload = () => { width.value = image.naturalWidth; message.textContent = `${input.files.length}枚を選択中（先頭：${image.naturalWidth} × ${image.naturalHeight}px）`; }; image.src = URL.createObjectURL(file); }; document.querySelector('#resize-image').onclick = async () => { if (!input.files.length || !width.value) { message.textContent = '画像を選んでください。'; return; } const targetWidth = Number(width.value); message.textContent = '変換中…'; for (const file of input.files) { const image = await new Promise((resolve, reject) => { const element = new Image(); element.onload = () => resolve(element); element.onerror = reject; element.src = URL.createObjectURL(file); }); const canvas = document.createElement('canvas'); canvas.width = targetWidth; canvas.height = Math.round(image.naturalHeight * targetWidth / image.naturalWidth); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .88)); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `small-${file.name.replace(/\.[^.]+$/, '')}.jpg`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); } message.textContent = `${input.files.length}枚を保存しました。ブラウザが複数ダウンロードの許可を求めたら、許可してください。`; }; }
+function copy(value, message) { navigator.clipboard.writeText(value).then(() => message.textContent = 'コピーしました。'); }
+document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => { selectedCategory = button.dataset.category; document.querySelector('.filter.active').classList.remove('active'); button.classList.add('active'); renderTools(); }));
+search.addEventListener('input', renderTools); grid.addEventListener('click', event => { const card = event.target.closest('[data-tool]'); if (card) setTool(card.dataset.tool); }); document.querySelector('#close-dialog').onclick = () => dialog.close(); renderTools();
